@@ -112,6 +112,21 @@ class RulerTool {
         }
     }
 
+    fun draw(scope: DrawScope, color: Color = Color.Blue) {
+        pose?.let {
+            // Draw the ruler line
+            scope.drawLine(
+                color = color,
+                start = it.start,
+                end = it.end,
+                strokeWidth = 8f
+            )
+            // Draw handles at both ends
+            scope.drawCircle(color, radius = 16f, center = it.start)
+            scope.drawCircle(color, radius = 16f, center = it.end)
+        }
+    }
+
     fun isPointOnRuler(point: Offset, tolerance: Float = 20f): Boolean {
         return pose?.let { ruler ->
             val segment = ruler.end - ruler.start
