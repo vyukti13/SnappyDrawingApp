@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -29,8 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -55,11 +53,38 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
     var menuExpanded by remember { mutableStateOf(false) }
 
     // SetSquare tool state
-    val setSquare = remember { SetSquareTool() }
-    var isSetSquareVisible by remember { mutableStateOf(false) }
-    var setSquareVariant by remember { mutableStateOf(SetSquareVariant.DEG_45) }
-    var draggingSetSquare by remember { mutableStateOf(false) }
-    var setSquareDragOffset by remember { mutableStateOf(Offset.Zero) }
+    val setSquare45 = remember { SetSquareTool() }
+    var isSetSquare45Visible by remember { mutableStateOf(false) }
+    var setSquare45Variant by remember { mutableStateOf(SetSquareVariant.DEG_45) }
+    var draggingSetSquare45 by remember { mutableStateOf(false) }
+    var setSquare45DragOffset by remember { mutableStateOf(Offset.Zero) }
+    // Make setSquareCenter a mutable state
+    var setSquare45Center by remember { mutableStateOf(Offset.Zero) }
+
+    // Sync setSquare.center with setSquareCenter
+    LaunchedEffect(isSetSquare45Visible, setSquare45Variant) {
+        if (isSetSquare45Visible) {
+            setSquare45.center = setSquare45Center
+            setSquare45.variant = setSquare45Variant
+        }
+    }
+
+    // SetSquare tool state
+    val setSquare3060 = remember { SetSquareTool() }
+    var isSetSquare3060Visible by remember { mutableStateOf(false) }
+    var setSquare3060Variant by remember { mutableStateOf(SetSquareVariant.DEG_30_60) }
+    var draggingSetSquare3060 by remember { mutableStateOf(false) }
+    var setSquare3060DragOffset by remember { mutableStateOf(Offset.Zero) }
+    // Make setSquareCenter a mutable state
+    var setSquare3060Center by remember { mutableStateOf(Offset.Zero) }
+
+    // Sync setSquare.center with setSquareCenter
+    LaunchedEffect(isSetSquare3060Visible, setSquare3060Variant) {
+        if (isSetSquare3060Visible) {
+            setSquare3060.center = setSquare3060Center
+            setSquare3060.variant = setSquare3060Variant
+        }
+    }
 
     LaunchedEffect(Unit) {
         // initialize from history (empty by default)
@@ -72,7 +97,6 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
     ) {
         val canvasWidthPx = with(LocalDensity.current) { maxWidth.toPx() }
         val canvasHeightPx = with(LocalDensity.current) { maxHeight.toPx() }
-        val rulerWidthPx = 8f // Set a default stroke width for the ruler
         Scaffold(
             topBar = {
                 TopAppBar(title = { Text("Snappy Drawing") }, actions = {
@@ -84,31 +108,37 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                         onDismissRequest = { menuExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text(if (isSetSquareVisible) "Remove Set Square" else "Add Set Square") },
+                            text = { Text(if (isSetSquare45Visible) "Remove 45° Set Square" else "Add 45° Set Square") },
                             onClick = {
-                                isSetSquareVisible = !isSetSquareVisible
-                                setSquare.isVisible = isSetSquareVisible
+                                isSetSquare45Visible = !isSetSquare45Visible
+                                setSquare45.isVisible = isSetSquare45Visible
                                 menuExpanded = false
-                                if (isSetSquareVisible) {
-                                    setSquare.center =
-                                        Offset(canvasWidthPx / 2f, canvasHeightPx / 2f)
-                                    setSquare.size = 200f
-                                    setSquare.angle = 0f
-                                    setSquare.variant = setSquareVariant
+                                if (isSetSquare45Visible) {
+                                    setSquare45Center =
+                                        Offset(canvasWidthPx / 3f, canvasHeightPx / 2f)
+                                    setSquare45.size = 200f
+                                    setSquare45.angle = 0f
+                                    setSquare45.variant = SetSquareVariant.DEG_45
+                                    setSquare45.center = setSquare45Center
                                 }
                             }
                         )
-                        if (isSetSquareVisible) {
-                            DropdownMenuItem(
-                                text = { Text("Set Square Variant: " + if (setSquareVariant == SetSquareVariant.DEG_45) "45°" else "30°–60°") },
-                                onClick = {
-                                    setSquareVariant =
-                                        if (setSquareVariant == SetSquareVariant.DEG_45) SetSquareVariant.DEG_30_60 else SetSquareVariant.DEG_45
-                                    setSquare.variant = setSquareVariant
-                                    menuExpanded = false
+                        DropdownMenuItem(
+                            text = { Text(if (isSetSquare3060Visible) "Remove 30-60° Set Square" else "Add 30-60° Set Square") },
+                            onClick = {
+                                isSetSquare3060Visible = !isSetSquare3060Visible
+                                setSquare3060.isVisible = isSetSquare3060Visible
+                                menuExpanded = false
+                                if (isSetSquare3060Visible) {
+                                    setSquare3060Center =
+                                        Offset(canvasWidthPx * 2f / 3f, canvasHeightPx / 2f)
+                                    setSquare3060.size = 200f
+                                    setSquare3060.angle = 0f
+                                    setSquare3060.variant = SetSquareVariant.DEG_30_60
+                                    setSquare3060.center = setSquare3060Center
                                 }
-                            )
-                        }
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text(if (isRulerMode) "Remove Ruler" else "Add Ruler") },
                             onClick = {
@@ -116,7 +146,6 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                                 ruler.isVisible = isRulerMode
                                 menuExpanded = false
                                 if (isRulerMode) {
-                                    // Optionally set initial ruler position/size here
                                     ruler.pose = RulerPose(
                                         Offset(canvasWidthPx / 4f, canvasHeightPx / 2f),
                                         Offset(canvasWidthPx * 3f / 4f, canvasHeightPx / 2f),
@@ -130,12 +159,12 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                         history.undo()
                         strokes.clear()
                         strokes.addAll(history.getStrokes())
-                    }) { Icon(Icons.Filled.ArrowBack, contentDescription = "Undo") }
+                    }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Undo") }
                     IconButton(onClick = {
                         history.redo()
                         strokes.clear()
                         strokes.addAll(history.getStrokes())
-                    }) { Icon(Icons.Filled.ArrowForward, contentDescription = "Redo") }
+                    }) { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Redo") }
                 })
             })
         { padding ->
@@ -148,6 +177,7 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                         detectTransformGestures(
                             panZoomLock = false,
                             onGesture = { centroid, pan, zoom, rotation ->
+                                if (ruler.pose == null) return@detectTransformGestures // Prevent crash
                                 draggingRuler = true
                                 val currentPose = ruler.pose!!
                                 val center = currentPose.center
@@ -162,10 +192,8 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                                     cos(newAngle - PI.toFloat()),
                                     sin(newAngle - PI.toFloat())
                                 ) * halfLength
-                                val newEnd =
-                                    center + Offset(cos(newAngle), sin(newAngle)) * halfLength
+                                val newEnd = center + Offset(cos(newAngle), sin(newAngle)) * halfLength
                                 ruler.pose = RulerPose(newStart, newEnd, newAngle)
-
                                 scale = (scale * zoom).coerceIn(0.25f, 4f)
                             }
                         )
@@ -179,107 +207,104 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                                 val change = event.changes.firstOrNull { it.pressed }
                                 val point = change?.position?.let { (it - offset) / scale }
 
-                                // --- Set Square Dragging Logic ---
-                                if (isSetSquareVisible && setSquare.isVisible && point != null) {
+                                // --- Set Square Dragging Logic (for both set squares) ---
+                                if (isSetSquare45Visible && setSquare45.isVisible && point != null) {
                                     if (pressedPointers == 1 && change != null) {
-                                        if (!draggingSetSquare && setSquare.isPointOnSetSquare(
-                                                point,
-                                                80f
-                                            )
-                                        ) { // Increased tolerance
-                                            // Start dragging set square
-                                            draggingSetSquare = true
-                                            setSquareDragOffset = point - setSquare.center
-                                            println("SetSquare drag started at: $point, offset: $setSquareDragOffset")
+                                        if (!draggingSetSquare45 && setSquare45.isPointOnSetSquare(point, 120f)) {
+                                            draggingSetSquare45 = true
+                                            setSquare45DragOffset = point - setSquare45Center
                                             change.consume()
                                         }
-                                        if (draggingSetSquare) {
-                                            setSquare.center = point - setSquareDragOffset
-                                            println("SetSquare center updated to: ${setSquare.center}")
+                                        if (draggingSetSquare45) {
+                                            setSquare45Center = point - setSquare45DragOffset
+                                            setSquare45.center = setSquare45Center
                                             change.consume()
                                             continue
                                         }
-                                    } else if (pressedPointers == 0 && draggingSetSquare) {
-                                        draggingSetSquare = false
-                                        setSquareDragOffset = Offset.Zero
-                                        println("SetSquare drag ended")
+                                    } else if (pressedPointers == 0 && draggingSetSquare45) {
+                                        draggingSetSquare45 = false
+                                        setSquare45DragOffset = Offset.Zero
+                                        continue
+                                    }
+                                }
+                                if (isSetSquare3060Visible && setSquare3060.isVisible && point != null) {
+                                    if (pressedPointers == 1 && change != null) {
+                                        if (!draggingSetSquare3060 && setSquare3060.isPointOnSetSquare(point, 120f)) {
+                                            draggingSetSquare3060 = true
+                                            setSquare3060DragOffset = point - setSquare3060Center
+                                            change.consume()
+                                            continue
+                                        }
+                                        if (draggingSetSquare3060) {
+                                            setSquare3060.center = setSquare3060Center
+                                            change.consume()
+                                            continue
+                                        }
+                                    } else if (pressedPointers == 0 && draggingSetSquare3060) {
+                                        draggingSetSquare3060 = false
                                         continue
                                     }
                                 }
 
                                 // --- Ruler Dragging Logic ---
-                                if (isRulerMode && ruler.isVisible && ruler.pose != null) {
-                                    if (pressedPointers == 1 && change != null && point != null) {
-                                        if (!draggingRuler && ruler.isPointOnRuler(
-                                                point,
-                                                30f
-                                            )
-                                        ) {
-                                            // Start dragging ruler
-                                            draggingRuler = true
-                                            dragOffset = point - ruler.pose!!.center
-                                            change.consume()
-                                        }
-                                        if (draggingRuler && dragOffset != null) {
-                                            // Move ruler by dragging
-                                            val newCenter = point - dragOffset
-                                            val length = ruler.pose!!.length
-                                            val angle = ruler.pose!!.angle
-                                            val halfLength = length / 2f
-                                            val newStart = newCenter + Offset(
-                                                cos(angle - PI.toFloat()),
-                                                sin(angle - PI.toFloat())
-                                            ) * halfLength
-                                            val newEnd =
-                                                newCenter + Offset(
-                                                    cos(angle),
-                                                    sin(angle)
-                                                ) * halfLength
-                                            ruler.pose = RulerPose(newStart, newEnd, angle)
-                                            change.consume()
-                                            continue
-                                        }
-                                    } else if (pressedPointers == 0 && draggingRuler) {
-                                        // Stop dragging ruler
-                                        draggingRuler = false
-                                        dragOffset = null
+                                if (!draggingSetSquare45 && !draggingSetSquare3060 && isRulerMode && ruler.isVisible && ruler.pose != null) {
+                                    if (!draggingRuler && point != null && ruler.isPointOnRuler(point, 30f)) {
+                                        draggingRuler = true
+                                        dragOffset = point - ruler.pose!!.center
+                                        change.consume()
                                         continue
                                     }
+                                    if (draggingRuler && dragOffset != null && point != null) {
+                                        val newCenter = point - dragOffset
+                                        val length = ruler.pose!!.length
+                                        val halfLength = length / 2f
+                                        val angle = ruler.pose!!.angle
+                                        val newStart = newCenter + Offset(
+                                            cos(angle - PI.toFloat()),
+                                            sin(angle - PI.toFloat())
+                                        ) * halfLength
+                                        val newEnd = newCenter + Offset(
+                                            cos(angle),
+                                            sin(angle)
+                                        ) * halfLength
+                                        ruler.pose = RulerPose(newStart, newEnd, angle)
+                                        change?.consume()
+                                        continue
+                                    }
+                                } else if (pressedPointers == 0 && draggingRuler) {
+                                    draggingRuler = false
+                                    dragOffset = null
+                                    continue
                                 }
 
-                                // --- Drawing Logic ---
-                                if ((isRulerMode && ruler.isVisible && ruler.pose != null && !draggingRuler && !(pressedPointers == 1 && change != null && point != null && ruler.isPointOnRuler(
-                                        point,
-                                        30f
-                                    ))) || (!isRulerMode || !ruler.isVisible || ruler.pose == null)
-                                ) {
-                                    // Normal drawing mode
-                                    if (pressedPointers == 1 && change != null && point != null) {
-                                        if (activeStroke == null) {
-                                            activeStroke = CustomStroke(mutableListOf(point))
-                                        } else {
-                                            activeStroke?.points?.add(point)
-                                        }
-                                        change.consume()
-                                    } else if (pressedPointers == 0 && activeStroke != null) {
-                                        val stroke = activeStroke!!
-                                        history.add(stroke)
-                                        strokes.clear()
-                                        strokes.addAll(history.getStrokes())
-                                        activeStroke = null
+                                // --- Drawing Logic (always check, unless dragging a tool) ---
+                                val canDraw = !draggingSetSquare45 && !draggingSetSquare3060 && !draggingRuler
+                                if (canDraw && pressedPointers == 1 && point != null) {
+                                    if (activeStroke == null) {
+                                        activeStroke = CustomStroke(mutableListOf(point))
+                                    } else {
+                                        activeStroke?.points?.add(point)
                                     }
+                                    change.consume()
+                                } else if (canDraw && pressedPointers == 0 && activeStroke != null) {
+                                    val stroke = activeStroke!!
+                                    history.add(stroke)
+                                    strokes.clear()
+                                    strokes.addAll(history.getStrokes())
+                                    activeStroke = null
                                 }
                             }
                         }
                     }
             ) {
+                // The receiver here is DrawScope
                 withTransform({
                     translate(offset.x, offset.y)
-                    scale(scale, scale) // Pass both scaleX and scaleY
+                    scale(scale, scale)
                 }) {
                     strokes.forEach { s: CustomStroke ->
                         if (s.points.size > 1) {
-                            val path = Path().apply {
+                            val path = androidx.compose.ui.graphics.Path().apply {
                                 moveTo(s.points.first().x, s.points.first().y)
                                 for (i in 1 until s.points.size) {
                                     val p = s.points[i]
@@ -289,16 +314,20 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                             drawPath(
                                 path = path,
                                 color = s.color,
-                                style = Stroke(width = s.widthPx)
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                    width = s.widthPx
+                                )
                             )
                         }
                     }
                     if (ruler.isVisible && ruler.pose != null) {
-                        ruler.draw(this, Color.Blue, rulerWidthPx)
+                        ruler.draw(this, Color.Blue, 8f)
                     }
-                    // Draw set square if visible
-                    if (isSetSquareVisible && setSquare.isVisible) {
-                        setSquare.draw(this, Color.Red)
+                    if (isSetSquare45Visible && setSquare45.isVisible) {
+                        setSquare45.draw(this, Color.Red)
+                    }
+                    if (isSetSquare3060Visible && setSquare3060.isVisible) {
+                        setSquare3060.draw(this, Color.Green)
                     }
                 }
             }
