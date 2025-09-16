@@ -47,6 +47,8 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
     var activeStroke by remember { mutableStateOf<CustomStroke?>(null) }
     val ruler = remember { RulerTool() }
     var draggingRuler by remember { mutableStateOf(false) }
+    var initialRulerTouch by remember { mutableStateOf(false) }
+    var rulerDragOffset by remember { mutableStateOf(Offset.Zero) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isRulerMode by remember { mutableStateOf(false) }
@@ -83,6 +85,22 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
         if (isSetSquare3060Visible) {
             setSquare3060.center = setSquare3060Center
             setSquare3060.variant = setSquare3060Variant
+        }
+    }
+
+    // Protractor tool state
+    val protractor = remember { ProtractorTool() }
+    var isProtractorVisible by remember { mutableStateOf(false) }
+    var protractorCenter by remember { mutableStateOf(Offset.Zero) }
+
+    LaunchedEffect(isProtractorVisible) {
+        if (isProtractorVisible) {
+            protractor.center = protractorCenter
+            protractor.size = 200f
+            protractor.angle = 0f
+            protractor.isVisible = true
+        } else {
+            protractor.isVisible = false
         }
     }
 
@@ -154,6 +172,20 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                                 }
                             }
                         )
+                        DropdownMenuItem(
+                            text = { Text(if (isProtractorVisible) "Remove Protractor" else "Add Protractor") },
+                            onClick = {
+                                isProtractorVisible = !isProtractorVisible
+                                protractor.isVisible = isProtractorVisible
+                                menuExpanded = false
+                                if (isProtractorVisible) {
+                                    protractorCenter = Offset(canvasWidthPx / 2f, canvasHeightPx / 2f)
+                                    protractor.center = protractorCenter
+                                    protractor.size = 200f
+                                    protractor.angle = 0f
+                                }
+                            }
+                        )
                     }
                     IconButton(onClick = {
                         history.undo()
@@ -177,10 +209,11 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                         detectTransformGestures(
                             panZoomLock = false,
                             onGesture = { centroid, pan, zoom, rotation ->
+                                if (!draggingRuler) return@detectTransformGestures
                                 if (ruler.pose == null) return@detectTransformGestures // Prevent crash
-                                draggingRuler = true
                                 val currentPose = ruler.pose!!
-                                val center = currentPose.center
+                                // Update center by pan
+                                val newCenter = currentPose.center + pan
                                 val currentAngle = atan2(
                                     currentPose.end.y - currentPose.start.y,
                                     currentPose.end.x - currentPose.start.x
@@ -188,11 +221,11 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                                 val newAngle = currentAngle + rotation
                                 val length = currentPose.length
                                 val halfLength = length / 2f
-                                val newStart = center + Offset(
+                                val newStart = newCenter + Offset(
                                     cos(newAngle - PI.toFloat()),
                                     sin(newAngle - PI.toFloat())
                                 ) * halfLength
-                                val newEnd = center + Offset(cos(newAngle), sin(newAngle)) * halfLength
+                                val newEnd = newCenter + Offset(cos(newAngle), sin(newAngle)) * halfLength
                                 ruler.pose = RulerPose(newStart, newEnd, newAngle)
                                 scale = (scale * zoom).coerceIn(0.25f, 4f)
                             }
@@ -200,12 +233,27 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                     }
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
-                            var dragOffset: Offset? = null
                             while (true) {
                                 val event = awaitPointerEvent()
                                 val pressedPointers = event.changes.count { it.pressed }
                                 val change = event.changes.firstOrNull { it.pressed }
                                 val point = change?.position?.let { (it - offset) / scale }
+
+                                // --- Ruler Dragging Logic ---
+                                if (isRulerMode && ruler.isVisible && ruler.pose != null && point != null) {
+                                    if (event.type == androidx.compose.ui.input.pointer.PointerEventType.Press) {
+                                        initialRulerTouch = ruler.isTouchOnRuler(point)
+                                        draggingRuler = initialRulerTouch
+                                        if (draggingRuler) {
+                                            // Store offset between touch and center
+                                            rulerDragOffset = point - ruler.pose!!.center
+                                        }
+                                    } else if (event.type == androidx.compose.ui.input.pointer.PointerEventType.Release) {
+                                        draggingRuler = false
+                                        initialRulerTouch = false
+                                        rulerDragOffset = Offset.Zero
+                                    }
+                                }
 
                                 // --- Set Square Dragging Logic (for both set squares) ---
                                 if (isSetSquare45Visible && setSquare45.isVisible && point != null) {
@@ -244,37 +292,6 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                                         draggingSetSquare3060 = false
                                         continue
                                     }
-                                }
-
-                                // --- Ruler Dragging Logic ---
-                                if (!draggingSetSquare45 && !draggingSetSquare3060 && isRulerMode && ruler.isVisible && ruler.pose != null) {
-                                    if (!draggingRuler && point != null && ruler.isPointOnRuler(point, 30f)) {
-                                        draggingRuler = true
-                                        dragOffset = point - ruler.pose!!.center
-                                        change.consume()
-                                        continue
-                                    }
-                                    if (draggingRuler && dragOffset != null && point != null) {
-                                        val newCenter = point - dragOffset
-                                        val length = ruler.pose!!.length
-                                        val halfLength = length / 2f
-                                        val angle = ruler.pose!!.angle
-                                        val newStart = newCenter + Offset(
-                                            cos(angle - PI.toFloat()),
-                                            sin(angle - PI.toFloat())
-                                        ) * halfLength
-                                        val newEnd = newCenter + Offset(
-                                            cos(angle),
-                                            sin(angle)
-                                        ) * halfLength
-                                        ruler.pose = RulerPose(newStart, newEnd, angle)
-                                        change?.consume()
-                                        continue
-                                    }
-                                } else if (pressedPointers == 0 && draggingRuler) {
-                                    draggingRuler = false
-                                    dragOffset = null
-                                    continue
                                 }
 
                                 // --- Drawing Logic (always check, unless dragging a tool) ---
@@ -328,6 +345,9 @@ fun DrawingScreen(modifier: Modifier = Modifier) {
                     }
                     if (isSetSquare3060Visible && setSquare3060.isVisible) {
                         setSquare3060.draw(this, Color.Green)
+                    }
+                    if (protractor.isVisible) {
+                        protractor.draw(this, Color.Magenta)
                     }
                 }
             }

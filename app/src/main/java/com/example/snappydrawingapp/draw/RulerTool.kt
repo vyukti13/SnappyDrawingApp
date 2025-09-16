@@ -141,6 +141,21 @@ class RulerTool {
         } ?: false
     }
 
+    // Returns true if the point is within thresholdPx of the ruler line segment
+    fun isTouchOnRuler(point: Offset, thresholdPx: Float = 40f): Boolean {
+        val pose = pose ?: return false
+        val start = pose.start
+        val end = pose.end
+        val lineVec = end - start
+        val pointVec = point - start
+        val lineLenSq = lineVec.getDistanceSquared()
+        if (lineLenSq == 0f) return false
+        val t = ((pointVec.x * lineVec.x + pointVec.y * lineVec.y) / lineLenSq).coerceIn(0f, 1f)
+        val projection = start + lineVec * t
+        val distance = (point - projection).getDistance()
+        return distance <= thresholdPx
+    }
+
     fun getEdgeDirection(): Offset? = pose?.direction
 }
 
@@ -150,5 +165,7 @@ private fun Offset.normalized(): Offset {
 }
 
 private fun Offset.getDistance(): Float = sqrt(x * x + y * y)
+
+private fun Offset.getDistanceSquared(): Float = x * x + y * y
 
 infix fun Offset.dot(other: Offset): Float = x * other.x + y * other.y
